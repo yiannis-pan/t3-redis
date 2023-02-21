@@ -2,65 +2,143 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "sqlite"
-    // NOTE: When using postgresql, mysql or sqlserver, uncomment the @db.Text annotations in model Account below
-    // Further reading:
-    // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
-    // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
-    url      = env("DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
-model Example {
-    id        String   @id @default(cuid())
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+model Cocktail {
+  id              String           @id @default(cuid())
+  name            String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  specIngredients CocktailSpec[]
+  ingredients     Ingredieint[]
+  method          String
+  ownerId          String
+  owner            User             @relation("CocktailOwners",fields: [ownerId], references: [id])
+  sharedUsers     User[]           @relation("sharedCocktails") 
+  abv             Float?            
+  brix            Float?          
+  acidity         Float?          
+  amount          Float?          
+  glass           String @default("")
+  garnish         String @default("")
+  ice             String @default("")
+  notes           String @default("")
+
+  @@index([ownerId])
+}
+model CocktailSpec {
+  cocktailId   String
+  cocktail     Cocktail    @relation(fields: [cocktailId], references: [id])
+  ingredientId String
+  ingredient   Ingredieint @relation(fields: [ingredientId], references: [id])
+  amount       Float
+  mesure       String      @default("ml")
+  @@id([cocktailId, ingredientId])
+  @@index([cocktailId])
+  @@index([ingredientId])
+}
+model Ingredieint {
+  id              String           @id @default(cuid())
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  name            String           
+  abvLevel        Float            @default(0)
+  brixLevel       Float            @default(0)
+  acidLevel       Float              @default(0)
+  cocktailSpecs CocktailSpec[] 
+  cocktails       Cocktail[]
+  ownerId          String           
+  owner            User             @relation(fields: [ownerId], references: [id])
+  sharedUsers     User[]            @relation("sharedIngredients")
+  notes           String           @default("")
+  bottleSize      Int?     
+  bottleCost      Float?  
+  bottleMesure    String?
+  steps   IngredientSteps[]
+  storage String @default("")
+  specId  String? 
+  ingredientSpecs IngredientSpec[] @relation("parentIngredient")
+  ingredientUses IngredientSpec[] @relation("ingredientUses")
+  type String @default("")
+  homemade Boolean @default(false)
+
+  
+  @@index([id])
+  @@index([ownerId])
 }
 
-// Necessary for Next auth
+
+model IngredientSteps{
+  id String @id @default(cuid())
+  ingredeintId String 
+  ingredient Ingredieint @relation(fields: [ingredeintId], references: [id])
+  stepNumber Int
+  stepDescription String 
+  @@index([ingredeintId])
+}
+model IngredientSpec{
+  parentIngredientId String 
+  parentIngredient Ingredieint @relation( "parentIngredient",fields: [parentIngredientId], references: [id])
+  specIngredientId String
+  specIngredient Ingredieint @relation("ingredientUses", fields: [specIngredientId], references: [id])
+  amount Float
+  mesure String @default("ml")
+  @@id([parentIngredientId, specIngredientId])
+  @@index([parentIngredientId])
+  @@index([specIngredientId])
+} 
 model Account {
-    id                String  @id @default(cuid())
-    userId            String
-    type              String
-    provider          String
-    providerAccountId String
-    refresh_token     String? // @db.Text
-    access_token      String? // @db.Text
-    expires_at        Int?
-    token_type        String?
-    scope             String?
-    id_token          String? // @db.Text
-    session_state     String?
-    user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@unique([provider, providerAccountId])
+  id                String     @id @default(cuid())
+  userId            String  
+  type              String @db.Text
+  provider          String
+  providerAccountId String 
+  refresh_token     String? @db.Text    
+  access_token      String?    @db.Text
+  expires_at        Int?
+  token_type        String? @db.Text
+  scope             String? @db.Text
+  id_token          String?    @db.Text
+  session_state     String?@db.Text
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
-    id           String   @id @default(cuid())
-    sessionToken String   @unique
-    userId       String
-    expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }
 
 model User {
-    id            String    @id @default(cuid())
-    name          String?
-    email         String?   @unique
-    emailVerified DateTime?
-    image         String?
-    accounts      Account[]
-    sessions      Session[]
+  id            String     @id @default(cuid())
+  name          String? @db.Text
+  email         String?    @unique
+  emailVerified DateTime? 
+  image         String? @db.Text
+  accounts      Account[]
+  sessions      Session[]
+  cocktails     Cocktail[] @relation("CocktailOwners")
+  sharedCocktails  Cocktail[]@relation("sharedCocktails")
+  ingredeitns   Ingredieint[]
+  sharedIngredients   Ingredieint[] @relation("sharedIngredients")
+
 }
 
 model VerificationToken {
-    identifier String
-    token      String   @unique
-    expires    DateTime
-
-    @@unique([identifier, token])
+  identifier String 
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
 }
