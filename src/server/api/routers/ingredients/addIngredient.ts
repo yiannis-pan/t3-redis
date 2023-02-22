@@ -18,10 +18,15 @@ export const addIngredientProcedure = protectedProcedure
   .input(z.object({ addIngredientSchema }))
   .mutation(async (req) => {
     console.table(req.input.addIngredientSchema);
-    return req.ctx.prisma.ingredieint.create({
+    const ing = await req.ctx.prisma.ingredieint.create({
       data: {
         ...req.input.addIngredientSchema,
         ownerId: req.ctx.session.user.id,
       },
     });
+    const redisIng = await req.ctx.redis.set(
+      `user::${req.ctx.session.user.id}::ing:${ing.name}`,
+      JSON.stringify(ing)
+    );
+    return { ing, redisIng };
   });
